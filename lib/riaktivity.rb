@@ -5,7 +5,8 @@ module Riaktivity
     http_port: 8098,
     pb_port: 8087,
     host: '127.0.0.1',
-    bucket: 'feeds'
+    bucket: 'feeds',
+    trim_at: 1000
   }
 
   def self.options=(options)
@@ -24,13 +25,13 @@ module Riaktivity
       @riak = Riak::Client.new(@options.slice(*Riak::Client::VALID_OPTIONS))
     end
 
-    def converge()
-      sort(merge())
+    def converge(*timelines)
+      trim(sort(merge(*timelines)))
     end
       
-    def merge()
+    def merge(*timelines)
       activities = []
-      @timelines.each do |timeline|
+      timelines.each do |timeline|
         timeline.each do |activity|
           if not activity_exists?(activity, in: activities)
             activities << activity
@@ -51,10 +52,16 @@ module Riaktivity
       end
     end
 
+    def trim(timeline)
+      timeline.slice(0, @options[:trim_at])
+    end
+
     def add(activity)
+      activity.stringify_keys!
       feed = bucket.get_or_new(@user)
       feed.data = [] if feed.data.nil?
       feed.data.unshift(activity)
+      feed.data = converge(feed.data)
       feed.store()
     end
 
