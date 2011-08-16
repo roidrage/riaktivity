@@ -45,7 +45,7 @@ describe Riaktivity do
     end
 
     let(:timeline) do
-      Riaktivity::Timeline.new(timeline1, timeline2)
+      Riaktivity::Timeline.new("roidrage", timeline1, timeline2)
     end
 
     describe "converging timelines" do
@@ -66,9 +66,29 @@ describe Riaktivity do
     end
 
     describe "adding an activity" do
+      include Riaktivity
+      let(:user) {"roidrage"}
+      let(:activity) {
+        {
+          id: 3,
+          timestamp: Time.now.utc.to_i - 3,
+          category: 'likes-message',
+          properties: {
+            liker_id: 123,
+            like_id: 321
+          }
+        }.stringify_keys
+      }
+      let(:riak) {Riak::Client.new}
+      before(:each) {
+        riak.bucket("feeds").props = {allow_mult: true}
+      }
+
       it "adds and activity to the list" do
-        
+        add_activity("david", id: 1235, timestamp: Time.now.utc.to_i, category: 'likes-message', properties: {}) 
+        riak.bucket("feeds").get("david")
       end
+
     end
   end
 end

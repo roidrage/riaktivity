@@ -1,7 +1,11 @@
+require "riak"
+
 module Riaktivity
   class Timeline
-    def initialize(*timelines)
+    def initialize(user, *timelines)
+      @user = user
       @timelines = *timelines
+      @riak = Riak::Client.new
     end
 
     def converge()
@@ -30,5 +34,24 @@ module Riaktivity
         activity1['timestamp'] <=> activity2['timestamp']
       end
     end
+
+    def add(activity)
+      feed = bucket.get_or_new(@user)
+      feed.data = [] if feed.data.nil?
+      feed.data.unshift(activity)
+      feed.store()
+    end
+
+    def bucket
+      @riak.bucket("feeds")
+    end
+  end
+
+  def add_activity(user, activity)
+    Timeline.new(user).add(activity)
+  end
+
+  def get_timeline(user)
+    Timeline.new(user).get()
   end
 end
