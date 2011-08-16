@@ -1,11 +1,27 @@
 require "riak"
 
 module Riaktivity
+  @options = {
+    http_port: 8098,
+    pb_port: 8087,
+    host: '127.0.0.1',
+    bucket: 'feeds'
+  }
+
+  def self.options=(options)
+    @options.merge!(options)
+  end
+
+  def self.options
+    @options
+  end
+
   class Timeline
     def initialize(user, *timelines)
       @user = user
       @timelines = *timelines
-      @riak = Riak::Client.new
+      @options = Riaktivity.options
+      @riak = Riak::Client.new(@options.slice(*Riak::Client::VALID_OPTIONS))
     end
 
     def converge()
@@ -43,7 +59,7 @@ module Riaktivity
     end
 
     def bucket
-      @riak.bucket("feeds")
+      @riak.bucket(Riaktivity.options[:bucket])
     end
   end
 
