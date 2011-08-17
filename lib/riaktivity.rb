@@ -63,13 +63,13 @@ module Riaktivity
         feed.data = trim(feed.data) if options[:trim]
         feed.store() if options[:store]
       end
+      feed.data ||= []
       feed
     end
 
     def add(activity)
       activity.stringify_keys!
       feed = load(converge: true)
-      feed.data = [] if feed.data.nil?
       feed.data.unshift(activity)
       feed.data = trim(feed.data)
       feed.store()
@@ -83,7 +83,7 @@ module Riaktivity
 
     def get()
       feed = load(store: true, converge: true, trim: true)
-      feed.data or []
+      feed.data
     end
 
     def bucket
