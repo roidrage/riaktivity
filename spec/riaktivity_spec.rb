@@ -68,7 +68,7 @@ describe Riaktivity do
       end
     end
 
-    describe "adding an activity" do
+    describe "with Riak" do
       include Riaktivity
       Riaktivity.options = {http_port: 9000}
       let(:user) {"roidrage"}
@@ -99,44 +99,86 @@ describe Riaktivity do
         test_server.recycle
       }
 
-      it "generates a new list for a new feed" do
-        expect {
+      describe "adding an activity" do
+        it "generates a new list for a new feed" do
+          expect {
+            feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          }.to raise_error
+
+          add_activity("david", id: 1235, timestamp: Time.now.utc.to_i, category: 'likes-message', properties: {}) 
           feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
-        }.to raise_error
+          feed.data.size.should == 1
+        end
 
-        add_activity("david", id: 1235, timestamp: Time.now.utc.to_i, category: 'likes-message', properties: {}) 
-        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
-        feed.data.size.should == 1
+        it "adds new entries to the beginning of the list" do
+          add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          feed.data.first['id'].should == 11
+        end
+
+        it "cuts off the feed at the specified end" do
+          Riaktivity.options[:trim_at] = 5
+          5.times {|num| add_activity("david", id: num, timestamp: Time.now.utc.to_i + num, category: 'likes-message', properties: {})}
+          add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          feed.data.size.should == 5
+        end
+
+        it "reconciles siblings" do
+          add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+
+          feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          feed.data << {id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {}}
+          feed.store()
+
+          add_activity("david", id: 12, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+
+          feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          feed.siblings.should == feed
+          feed.data.size.should == 3
+        end
       end
 
-      it "adds new entries to the beginning of the list" do
-        add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
-        add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
-        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
-        feed.data.first['id'].should == 11
-      end
+      describe "getting a user's timeline" do
+        it "doesn't fail when no timeline exists yet" do
+          expect {get_timeline("roidrage")}.to_not raise_error
+        end
 
-      it "cuts off the feed at the specified end" do
-        Riaktivity.options[:trim_at] = 5
-        5.times {|num| add_activity("david", id: num, timestamp: Time.now.utc.to_i + num, category: 'likes-message', properties: {})}
-        add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
-        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
-        feed.data.size.should == 5
-      end
+        it "should return an empty list when no timeline exists" do
+          get_timeline("roidrage").should == []
+        end
 
-      it "reconciles siblings" do
-        add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+        it "should return the user's timeline" do
+          add_activity("david", id: 12, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          get_timeline("david").size.should == 1
+        end
 
-        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
-        add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
-        feed.data << {id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {}}
-        feed.store()
+        it "should reconcile siblings" do
+          add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
 
-        add_activity("david", id: 12, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          feed.data << {id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {}}
+          feed.store()
 
-        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
-        feed.siblings.should == feed
-        feed.data.size.should == 3
+          feed = get_timeline("david")
+          feed.size.should == 2
+        end
+
+        it "should store the updated timeline after reconciling siblings" do
+          add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+          feed.data << {id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {}}
+          feed.store()
+
+          feed = get_timeline("david")
+
+          feed_object = riak.bucket(Riaktivity.options[:bucket]).get("david")
+          feed_object.siblings.should == feed_object
+        end
       end
     end
   end

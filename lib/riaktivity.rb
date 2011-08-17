@@ -59,19 +59,27 @@ module Riaktivity
     def add(activity)
       activity.stringify_keys!
       feed = bucket.get_or_new(@user)
-      maybe_converge_siblings(feed)
+      converge_siblings(feed) if feed.conflict?
       feed.data = [] if feed.data.nil?
       feed.data.unshift(activity)
       feed.data = trim(feed.data)
       feed.store()
     end
 
-    def maybe_converge_siblings(feed)
+    def converge_siblings(feed)
+      timelines = feed.siblings.map(&:data)
+      feed.data = converge(*timelines)
+      feed.content_type = "application/json"
+    end
+
+    def get()
+      feed = bucket.get_or_new(@user)
       if feed.conflict?
-        timelines = feed.siblings.map(&:data)
-        feed.data = converge(*timelines)
-        feed.content_type = "application/json"
+        converge_siblings(feed)
+        feed.data = trim(feed.data)
+        feed.store()
       end
+      feed.data or []
     end
 
     def bucket
