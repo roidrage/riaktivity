@@ -1,12 +1,12 @@
 ## Riaktivity
 
-Store timelines in Riak with Ruby. A work in progress.
+Store timelines in Riak with Ruby. A Work in progress.
 
 Stores a list of items in Riak, converges conflicting updates on both read
 and write, keeping the list at a configurable length. Inspired by
 Yammer's
 [Streamie](http://blog.basho.com/2011/03/28/Riak-and-Scala-at-Yammer/) and
-Formspring's [timak](https://github.com/bretthoerner/timak).
+Disqus' [timak](https://github.com/bretthoerner/timak).
 
 ## Assumptions
 
