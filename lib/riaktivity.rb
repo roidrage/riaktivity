@@ -55,11 +55,20 @@ module Riaktivity
     def trim(timeline)
       timeline.slice(0, @options[:capped_at])
     end
+  
+    def load(options)
+      feed = bucket.get_or_new(@user)
+      if feed.conflict? and options[:converge]
+        converge_siblings(feed)
+        feed.data = trim(feed.data) if options[:trim]
+        feed.store() if options[:store]
+      end
+      feed
+    end
 
     def add(activity)
       activity.stringify_keys!
-      feed = bucket.get_or_new(@user)
-      converge_siblings(feed) if feed.conflict?
+      feed = load(converge: true)
       feed.data = [] if feed.data.nil?
       feed.data.unshift(activity)
       feed.data = trim(feed.data)
@@ -73,12 +82,7 @@ module Riaktivity
     end
 
     def get()
-      feed = bucket.get_or_new(@user)
-      if feed.conflict?
-        converge_siblings(feed)
-        feed.data = trim(feed.data)
-        feed.store()
-      end
+      feed = load(store: true, converge: true, trim: true)
       feed.data or []
     end
 
