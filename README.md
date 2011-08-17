@@ -1,6 +1,6 @@
 ## Riaktivity
 
-Store timelines in Riak with Ruby. A Work in progress.
+Store timelines in Riak with Ruby. A work in progress.
 
 Stores a list of items in Riak, converges conflicting updates on both read
 and write, keeping the list at a configurable length. Inspired by
@@ -10,7 +10,7 @@ Disqus' [timak](https://github.com/bretthoerner/timak).
 
 ## Assumptions
 
-* Unique IDs are generated elsewhere
+* Unique IDs are generated elsewhere. They only need to be unique per entry, not per user feed
 * Each entry includes a timestamp, based on which data is sorted
 * Feeds are capped on size to prevent exponential growth
 * Data on who follows who is maintained elsewhere
