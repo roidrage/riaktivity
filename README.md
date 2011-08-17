@@ -30,3 +30,12 @@ end
 user = User.new(user_id: "roidrage")
 user.add_entry(id: UUID.new, timestamp: Time.now, category: 'troll-face', properties: {entry_id: 2134})
 ```
+
+## Configuration
+
+``` ruby
+Riaktivity.options = {host: '192.168.2.1',
+                      protocol: 'pbc',
+                      capped_at: 100,
+                      bucket: 'troll-feed'}
+```

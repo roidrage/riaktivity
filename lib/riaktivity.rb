@@ -6,7 +6,7 @@ module Riaktivity
     pb_port: 8087,
     host: '127.0.0.1',
     bucket: 'feeds',
-    trim_at: 1000
+    capped_at: 1000
   }
 
   def self.options=(options)
@@ -53,7 +53,7 @@ module Riaktivity
     end
 
     def trim(timeline)
-      timeline.slice(0, @options[:trim_at])
+      timeline.slice(0, @options[:capped_at])
     end
 
     def add(activity)

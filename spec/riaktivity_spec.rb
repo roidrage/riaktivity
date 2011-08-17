@@ -118,7 +118,7 @@ describe Riaktivity do
         end
 
         it "cuts off the feed at the specified end" do
-          Riaktivity.options[:trim_at] = 5
+          Riaktivity.options[:capped_at] = 5
           5.times {|num| add_activity("david", id: num, timestamp: Time.now.utc.to_i + num, category: 'likes-message', properties: {})}
           add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
           feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
