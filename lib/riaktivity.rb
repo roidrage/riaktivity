@@ -26,7 +26,7 @@ module Riaktivity
     end
 
     def converge(*timelines)
-      trim(sort(merge(*timelines)))
+      sort(merge(*timelines))
     end
       
     def merge(*timelines)
@@ -59,10 +59,19 @@ module Riaktivity
     def add(activity)
       activity.stringify_keys!
       feed = bucket.get_or_new(@user)
+      maybe_converge_siblings(feed)
       feed.data = [] if feed.data.nil?
       feed.data.unshift(activity)
-      feed.data = converge(feed.data)
+      feed.data = trim(feed.data)
       feed.store()
+    end
+
+    def maybe_converge_siblings(feed)
+      if feed.conflict?
+        timelines = feed.siblings.map(&:data)
+        feed.data = converge(*timelines)
+        feed.content_type = "application/json"
+      end
     end
 
     def bucket

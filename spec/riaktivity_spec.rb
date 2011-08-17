@@ -109,7 +109,12 @@ describe Riaktivity do
         feed.data.size.should == 1
       end
 
-      it "adds new entries to the beginning of the list"
+      it "adds new entries to the beginning of the list" do
+        add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+        add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+        feed.data.first['id'].should == 11
+      end
 
       it "cuts off the feed at the specified end" do
         Riaktivity.options[:trim_at] = 5
@@ -117,6 +122,21 @@ describe Riaktivity do
         add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
         feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
         feed.data.size.should == 5
+      end
+
+      it "reconciles siblings" do
+        add_activity("david", id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+
+        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+        add_activity("david", id: 11, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+        feed.data << {id: 10, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {}}
+        feed.store()
+
+        add_activity("david", id: 12, timestamp: Time.now.utc.to_i + 10, category: 'likes-message', properties: {})
+
+        feed = riak.bucket(Riaktivity.options[:bucket]).get("david")
+        feed.siblings.should == feed
+        feed.data.size.should == 3
       end
     end
   end
